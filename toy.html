@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>新年快乐 - 烟花特效</title>
+    <style>
+        /* CSS样式：让Canvas充满全屏，背景全黑 */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden; /* 防止滚动条出现 */
+            touch-action: none; /* 防止点击时的默认放大行为 */
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="fireworksCanvas"></canvas>
+
+<script>
+    // --- JavaScript 核心逻辑 ---
+
+    const canvas = document.getElementById('fireworksCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 设置画布尺寸为窗口大小
+    function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); // 初始化时设置一次
+
+    let particles = []; // 存放所有烟花粒子的数组
+
+    // 工具函数：生成范围内的随机数
+    function random(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    // --- 粒子类定义 ---
+    // 每个粒子代表烟花爆炸后的一个小火星
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            // 粒子的初始速度和角度（向四周随机散开）
+            const angle = random(0, Math.PI * 2);
+            const speed = random(2, 10); // 控制爆炸范围大小
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+
+            this.color = color;
+            this.alpha = 1; // 透明度，初始为1（不透明）
+            this.gravity = 0.05; // 重力系数，让粒子下坠
+            this.friction = 0.96; // 摩擦力系数，让粒子减速
+            this.decay = random(0.008, 0.015); // 衰减速度，控制消失快慢
+        }
+
+        // 更新粒子状态
+        update() {
+            this.vx *= this.friction;
+            this.vy *= this.friction;
+            this.vy += this.gravity; // 施加重力
+            this.x += this.vx;
+            this.y += this.vy;
+            this.alpha -= this.decay; // 透明度递减
+        }
+
+        // 绘制粒子
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); // 绘制一个小圆点
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // --- 创建烟花爆炸的核心函数 ---
+    function createExplosion(x, y) {
+        // 随机生成一种鲜艳的颜色 (HSL模式)
+        const hue = random(0, 360);
+        const color = `hsl(${hue}, 100%, 60%)`;
+
+        // 一个烟花由 80 个粒子组成
+        for (let i = 0; i < 80; i++) {
+            particles.push(new Particle(x, y, color));
+        }
+    }
+
+    // --- 动画循环 ---
+    function animate() {
+        // 关键技巧：不完全清空画布，而是覆盖一层半透明的黑色
+        // 这会形成粒子移动的“拖尾”效果，看起来更真实
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 遍历并更新所有粒子
+        for (let i = particles.length - 1; i >= 0; i--) {
+            particles[i].update();
+            particles[i].draw();
+            // 如果粒子完全透明了，就从数组中移除
+            if (particles[i].alpha <= 0) {
+                particles.splice(i, 1);
+            }
+        }
+
+        // 偶尔自动随机燃放一个，保持屏幕不冷清
+        if (Math.random() < 0.03) {
+            createExplosion(random(canvas.width * 0.2, canvas.width * 0.8), random(canvas.height * 0.2, canvas.height * 0.5));
+        }
+
+        requestAnimationFrame(animate); // 下一帧继续循环
+    }
+
+    // --- 事件监听 ---
+    // 手机触摸屏幕时触发
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // 防止触发滚动等默认行为
+        const touch = e.touches[0];
+        createExplosion(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    // 电脑鼠标点击时触发
+    canvas.addEventListener('mousedown', (e) => {
+        createExplosion(e.clientX, e.clientY);
+    });
+
+    // --- 开始动画 ---
+    animate();
+
+</script>
+</body>
+</html>
