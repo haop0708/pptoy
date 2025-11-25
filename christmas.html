@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Merry Christmas</title>
+    <style>
+        /* --- 全局样式 --- */
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            /* 圣诞午夜蓝渐变背景 */
+            background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1; /* 画布在底层 */
+        }
+
+        /* --- 中心文字样式 (悬浮在Canvas之上) --- */
+        .center-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            text-align: center;
+            pointer-events: none; /* 让点击事件穿透文字传给Canvas */
+            color: #fff;
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-family: 'Georgia', serif; /* 使用衬线体更有节日感 */
+            margin: 0;
+            /* 模拟霓虹灯和发光效果 */
+            text-shadow: 
+                0 0 10px #fff, 
+                0 0 20px #fff, 
+                0 0 40px #ff00de, 
+                0 0 70px #ff00de;
+            animation: glow 2s infinite alternate;
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin-top: 10px;
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+
+        /* 文字微闪动画 */
+        @keyframes glow {
+            from { text-shadow: 0 0 10px #fff, 0 0 20px #ff0000, 0 0 30px #c0392b; }
+            to { text-shadow: 0 0 20px #fff, 0 0 30px #ff4d4d, 0 0 40px #ff0000; }
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="christmasCanvas"></canvas>
+
+<div class="center-text">
+    <h1>Merry Christmas</h1>
+    <p>点击屏幕释放魔法</p>
+</div>
+
+<script>
+    const canvas = document.getElementById('christmasCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let width, height;
+    let snowflakes = []; // 存放雪花
+    let sparkles = [];   // 存放点击产生的魔法光尘
+
+    // --- 初始化画布 ---
+    function resize() {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // 工具函数：随机数
+    function random(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    // --- 类：雪花 (背景常驻) ---
+    class Snowflake {
+        constructor() {
+            this.init();
+        }
+
+        init() {
+            this.x = Math.random() * width;
+            this.y = Math.random() * -height; // 初始在屏幕上方之外
+            this.vy = random(1, 3); // 下落速度
+            this.r = random(1, 3);  // 雪花半径
+            this.swing = random(0, Math.PI * 2); // 摇摆相位
+            this.swingSpeed = random(0.02, 0.05); // 摇摆速度
+            this.opacity = random(0.4, 0.9);
+        }
+
+        update() {
+            this.y += this.vy;
+            // 模拟风吹摇摆效果 (正弦波)
+            this.swing += this.swingSpeed;
+            this.x += Math.sin(this.swing) * 0.5;
+
+            // 如果雪花落到底部，重置到顶部
+            if (this.y > height) {
+                this.init();
+                this.y = -10; // 确保从最上面重新开始
+            }
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+            ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // --- 类：魔法光尘 (点击交互) ---
+    class Sparkle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            const angle = random(0, Math.PI * 2);
+            const speed = random(2, 6);
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.color = color; // 接收特定颜色
+            this.alpha = 1;
+            this.decay = random(0.015, 0.03); // 消失速度
+            this.gravity = 0.1; // 粒子重力
+        }
+
+        update() {
+            this.vx *= 0.95; // 摩擦力
+            this.vy *= 0.95;
+            this.vy += this.gravity;
+            this.x += this.vx;
+            this.y += this.vy;
+            this.alpha -= this.decay;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    // 初始化雪花数量 (根据屏幕宽度调整)
+    const maxSnowflakes = window.innerWidth < 600 ? 100 : 200;
+    for (let i = 0; i < maxSnowflakes; i++) {
+        snowflakes.push(new Snowflake());
+        // 让部分雪花初始就已经在屏幕内，避免开始时空白
+        snowflakes[i].y = Math.random() * height;
+    }
+
+    // --- 交互逻辑 ---
+    function createMagic(x, y) {
+        const colors = ['#ff0000', '#00ff00', '#ffd700', '#ffffff']; // 红、绿、金、白
+        for (let i = 0; i < 30; i++) {
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            sparkles.push(new Sparkle(x, y, color));
+        }
+    }
+
+    canvas.addEventListener('mousedown', (e) => createMagic(e.clientX, e.clientY));
+    canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.touches[0];
+        createMagic(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    // --- 动画循环 ---
+    function animate() {
+        ctx.clearRect(0, 0, width, height); // 圣诞主题通常不需要拖尾，所以完全清空
+
+        // 更新绘制雪花
+        snowflakes.forEach(flake => {
+            flake.update();
+            flake.draw();
+        });
+
+        // 更新绘制点击光尘
+        for (let i = sparkles.length - 1; i >= 0; i--) {
+            sparkles[i].update();
+            sparkles[i].draw();
+            if (sparkles[i].alpha <= 0) {
+                sparkles.splice(i, 1);
+            }
+        }
+
+        requestAnimationFrame(animate);
+    }
+
+    animate();
+
+</script>
+</body>
+</html>
